@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>COIN BRAWL — Clicker</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Manrope:wght@400;600;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="bg-grid"></div>
+  <div class="fx" id="fx"></div>
+
+  <header class="top">
+    <div class="logo">COIN<span>BRAWL</span></div>
+    <div class="stats">
+      <div class="stat gold"><i>◎</i><span id="coins">0</span></div>
+      <div class="stat hp"><i>♥</i><span id="hpLabel">100/100</span></div>
+      <div class="stat sync" id="sync">offline</div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section class="col left">
+      <button class="orb" id="clickBtn" type="button">
+        <div class="orb-ring"></div>
+        <div class="orb-core">+1</div>
+      </button>
+      <p class="hint">Жми ядро — копи монеты</p>
+
+      <div class="panel">
+        <h3>Прокачка</h3>
+        <button class="btn" id="hpUpBtn">
+          Здоровье +25
+          <span id="hpCost">80 ◎</span>
+        </button>
+        <button class="btn ghost" id="healBtn">
+          Лечение
+          <span id="healCost">40 ◎</span>
+        </button>
+      </div>
+    </section>
+
+    <section class="col mid">
+      <div class="panel battle">
+        <div class="wave">ВОЛНА <span id="wave">1</span></div>
+        <div class="enemy" id="enemy">
+          <div class="enemy-face" id="enemyFace">☠</div>
+          <div class="bar"><div id="enemyBar"></div></div>
+          <div class="ename" id="enemyName">Слизень</div>
+          <div class="ehp" id="enemyHp">30 / 30</div>
+        </div>
+        <button class="btn fight" id="fightBtn">АТАКОВАТЬ КАРТАМИ</button>
+        <p class="hint tiny" id="battleLog">Собери колоду и бей врагов.</p>
+      </div>
+    </section>
+
+    <section class="col right">
+      <div class="panel">
+        <h3>Прокрут карточек</h3>
+        <p class="hint tiny">Старт 100 ◎ · цена растёт каждый раз</p>
+        <button class="btn roll" id="rollBtn">
+          КРУТИТЬ
+          <span id="rollCost">100 ◎</span>
+        </button>
+      </div>
+      <div class="panel deck">
+        <h3>Колода <small id="deckCount">0</small></h3>
+        <div class="cards" id="cards"></div>
+      </div>
+    </section>
+  </main>
+
+  <div class="modal hidden" id="modal">
+    <div class="card-reveal" id="reveal"></div>
+  </div>
+
+  <script src="game.js"></script>
+</body>
+</html>
