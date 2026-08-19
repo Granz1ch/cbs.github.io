@@ -1,4 +1,5 @@
-const API = window.CBS_API || 'http://fi14.bot-hosting.cloud:25314';
+const HOSTED = /fi14\.bot-hosting\.cloud/.test(location.host);
+const API = window.CBS_API || (HOSTED || location.port === '25314' ? '' : 'http://fi14.bot-hosting.cloud:25314');
 const PLAYER_KEY = 'cbs_player_id';
 const NAME_KEY = 'cbs_name';
 const TURN_MS = 12000;
@@ -38,7 +39,7 @@ const ENEMIES = [
 const state = {
   id: localStorage.getItem(PLAYER_KEY) || crypto.randomUUID(),
   name: localStorage.getItem(NAME_KEY) || `Боец-${crypto.randomUUID().slice(0, 4)}`,
-  coins: 0,
+  coins: 100,
   hp: 100,
   maxHp: 100,
   rolls: 0,
@@ -273,6 +274,7 @@ function applyServer(data) {
   if (!data) return;
   const keep = { id: state.id, name: state.name };
   Object.assign(state, data, keep);
+  if (typeof state.coins !== 'number' || Number.isNaN(state.coins)) state.coins = 100;
 }
 
 async function save() {
@@ -483,19 +485,34 @@ function startBattle() {
 }
 
 function renderOnline(players) {
-  $('onlineCount').textContent = players.length;
-  if (!players.length) {
-    $('onlineList').innerHTML = '<p class="hint tiny">Никого онлайн</p>';
-    return;
+  const list = Array.isArray(players) ? players.slice() : [];
+  if (!list.some((p) => p.id === state.id)) {
+    list.unshift({
+      id: state.id,
+      name: `${state.name} (ты)`,
+      hp: state.hp,
+      maxHp: state.maxHp,
+      cards: state.cards.length,
+      duelId: state.duelId,
+      self: true
+    });
   }
-  $('onlineList').innerHTML = players
-    .map(
-      (p) => `<div class="online-row">
-        <span>${p.name} · ♥${p.hp}/${p.maxHp} · ${p.cards} карт</span>
-        <button data-chal="${p.id}" ${p.duelId || duel ? 'disabled' : ''}>Дуэль</button>
-      </div>`
-    )
+  $('onlineCount').textContent = list.length;
+  $('onlineList').innerHTML = list
+    .map((p) => {
+      const isMe = p.id === state.id || p.self;
+      return `<div class="online-row">
+        <span>${isMe ? `${p.name.replace(/ \(ты\)$/, '')} (ты)` : p.name} · ♥${p.hp}/${p.maxHp} · ${p.cards} карт</span>
+        <button data-chal="${p.id}" ${isMe || p.duelId || duel ? 'disabled' : ''}>${isMe ? 'это ты' : 'Дуэль'}</button>
+      </div>`;
+    })
     .join('');
+}
+
+function clearDeadDuel() {
+  duel = null;
+  state.duelId = null;
+  $('leaveDuelBtn').classList.add('hidden');
 }
 
 async function pulse() {
@@ -535,15 +552,32 @@ async function pulse() {
       syncHpFromDuel();
       if (duel.ended) {
         $('arenaHint').textContent = duel.log;
+        await apiSoft('/api/duel/leave', { playerId: state.id, duelId: state.duelId });
+        clearDeadDuel();
         save();
       }
+      render();
+    } else {
+      await apiSoft('/api/duel/leave', { playerId: state.id, duelId: inbox.duelId });
+      clearDeadDuel();
+      render();
+    }
+  } else if (state.duelId || duel) {
+    const id = state.duelId || (duel && duel.id);
+    const pack = id ? await apiSoft(`/api/duel/${id}`) : null;
+    if (!pack || !pack.found || (pack.duel && pack.duel.ended)) {
+      if (id) await apiSoft('/api/duel/leave', { playerId: state.id, duelId: id });
+      clearDeadDuel();
+      render();
+    } else {
+      duel = pack.duel;
+      syncHpFromDuel();
       render();
     }
   }
 }
 
 $('clickBtn').addEventListener('click', (ev) => {
-  if (duel) return;
   state.coins += 1;
   floatText(ev.clientX, ev.clientY, '+1');
   render();
