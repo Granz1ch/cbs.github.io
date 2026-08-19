@@ -62,6 +62,7 @@ function sanitize(body) {
     turn: ['idle', 'player', 'enemy'].includes(body.turn) ? body.turn : 'idle',
     queueNum: body.queueNum == null ? null : Number(body.queueNum),
     queueDmg: Math.max(0, Number(body.queueDmg) || 0),
+    queueHeal: Math.max(0, Number(body.queueHeal) || 0),
     inBattle: Boolean(body.inBattle),
     duelId: body.duelId ? String(body.duelId).slice(0, 80) : null
   };
