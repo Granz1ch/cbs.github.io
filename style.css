@@ -40,6 +40,26 @@ body {
 .stat.gold { color: var(--gold); }
 .stat.hp { color: var(--hp); }
 .stat.sync { font-size: 12px; opacity: .7; text-transform: uppercase; letter-spacing: .08em; }
+.stat.name { padding: 4px 10px; }
+.stat.name input {
+  background: transparent; border: 0; color: #efeafc; width: 110px;
+  font-weight: 800; font-family: inherit; outline: none;
+}
+
+.online { display: flex; flex-direction: column; gap: 6px; max-height: 180px; overflow: auto; }
+.online-row {
+  display: flex; justify-content: space-between; align-items: center; gap: 8px;
+  background: #19152a; border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px;
+  font-size: 13px;
+}
+.online-row button {
+  border: 0; border-radius: 8px; padding: 6px 10px; cursor: pointer;
+  background: #ff4d6d; color: #fff; font-weight: 800;
+}
+.online-row button:disabled { opacity: .4; cursor: not-allowed; }
+.card.heal .d { color: #6ee7b7; }
+.hidden { display: none !important; }
+.chal-actions { display: flex; flex-direction: column; gap: 6px; margin-top: 16px; }
 
 .wrap {
   display: grid; grid-template-columns: 1fr 1.1fr 1fr; gap: 18px;

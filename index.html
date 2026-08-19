@@ -15,6 +15,9 @@
   <header class="top">
     <div class="logo">COIN<span>BRAWL</span></div>
     <div class="stats">
+      <label class="stat name">
+        <input id="nick" maxlength="24" placeholder="Имя" />
+      </label>
       <div class="stat gold"><i>◎</i><span id="coins">0</span></div>
       <div class="stat hp"><i>♥</i><span id="hpLabel">100/100</span></div>
       <div class="stat sync" id="sync">offline</div>
@@ -40,11 +43,17 @@
           <span id="healCost">40 ◎</span>
         </button>
       </div>
+
+      <div class="panel arena">
+        <h3>Дуэли · онлайн <small id="onlineCount">0</small></h3>
+        <div class="online" id="onlineList"></div>
+        <p class="hint tiny" id="arenaHint">Вызови любого активного игрока.</p>
+      </div>
     </section>
 
     <section class="col mid">
       <div class="panel battle">
-        <div class="wave">ВОЛНА <span id="wave">1</span></div>
+        <div class="wave" id="modeLabel">ВОЛНА <span id="wave">1</span></div>
         <div class="enemy" id="enemy">
           <div class="enemy-face" id="enemyFace">☠</div>
           <div class="bar"><div id="enemyBar"></div></div>
@@ -58,14 +67,15 @@
         <p class="hint tiny">Колода врага: <span id="enemyDeck">0</span></p>
         <button class="btn fight" id="fightBtn">НАЧАТЬ БОЙ</button>
         <button class="btn ghost" id="endTurnBtn">ЗАВЕРШИТЬ ОЧЕРЕДЬ</button>
-        <p class="hint tiny" id="battleLog">Карты с одним номером кидаются в одной очереди.</p>
+        <button class="btn ghost hidden" id="leaveDuelBtn">СДАТЬСЯ</button>
+        <p class="hint tiny" id="battleLog">Карты одного номера — одна очередь. Урон и хил.</p>
       </div>
     </section>
 
     <section class="col right">
       <div class="panel">
         <h3>Прокрут карточек</h3>
-        <p class="hint tiny">Старт 100 ◎ · цена растёт каждый раз</p>
+        <p class="hint tiny">Урон или хил · старт 100 ◎</p>
         <button class="btn roll" id="rollBtn">
           КРУТИТЬ
           <span id="rollCost">100 ◎</span>
@@ -80,6 +90,17 @@
 
   <div class="modal hidden" id="modal">
     <div class="card-reveal" id="reveal"></div>
+  </div>
+
+  <div class="modal hidden" id="challengeModal">
+    <div class="card-reveal challenge-box">
+      <div class="r">ВЫЗОВ НА ДУЭЛЬ</div>
+      <b id="challengeText">Игрок вызывает тебя</b>
+      <div class="chal-actions">
+        <button class="btn fight" id="acceptDuel">ПРИНЯТЬ</button>
+        <button class="btn ghost" id="declineDuel">ОТКЛОНИТЬ</button>
+      </div>
+    </div>
   </div>
 
   <script src="game.js"></script>
