@@ -133,7 +133,6 @@ app.get('/api/online', async (req, res) => {
         continue;
       }
       const p = JSON.parse(raw);
-      if (p.id === me) continue;
       players.push(p);
     }
     res.json({ players });
