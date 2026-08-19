@@ -1,10 +1,4 @@
-const DEFAULT_API = 'http://fi14.bot-hosting.cloud:25314';
-const API =
-  window.CBS_API !== undefined
-    ? window.CBS_API
-    : location.port === '25314' || location.port === '3000'
-      ? ''
-      : DEFAULT_API;
+const API = window.CBS_API || 'http://fi14.bot-hosting.cloud:25314';
 const PLAYER_KEY = 'cbs_player_id';
 const NAME_KEY = 'cbs_name';
 const TURN_MS = 12000;

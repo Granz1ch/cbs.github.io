@@ -13,9 +13,15 @@ PORT=25314 npm start
 
 Redis: `fi14.bot-hosting.cloud:25299`
 
-Фронт раздаётся с того же сервера (`/`) или GitHub Pages. API по умолчанию:
+Игра и API: **http://fi14.bot-hosting.cloud:25314**
 
-`http://fi14.bot-hosting.cloud:25314`
+На сервере:
+
+```bash
+git pull
+npm install
+PORT=25314 npm start
+```
 
 Если другой хост:
 

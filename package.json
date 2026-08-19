@@ -5,7 +5,7 @@
   "description": "COIN BRAWL clicker — frontend + Redis backend",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "PORT=25314 node server.js"
   },
   "dependencies": {
     "cors": "^2.8.5",
