@@ -51,8 +51,14 @@
           <div class="ename" id="enemyName">Слизень</div>
           <div class="ehp" id="enemyHp">30 / 30</div>
         </div>
-        <button class="btn fight" id="fightBtn">АТАКОВАТЬ КАРТАМИ</button>
-        <p class="hint tiny" id="battleLog">Собери колоду и бей врагов.</p>
+        <div class="queue-line">
+          <span id="queueInfo">Начни бой</span>
+          <b id="turnClock"></b>
+        </div>
+        <p class="hint tiny">Колода врага: <span id="enemyDeck">0</span></p>
+        <button class="btn fight" id="fightBtn">НАЧАТЬ БОЙ</button>
+        <button class="btn ghost" id="endTurnBtn">ЗАВЕРШИТЬ ОЧЕРЕДЬ</button>
+        <p class="hint tiny" id="battleLog">Карты с одним номером кидаются в одной очереди.</p>
       </div>
     </section>
 

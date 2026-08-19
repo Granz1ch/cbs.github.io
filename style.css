@@ -113,6 +113,19 @@ body {
 .card .r { font-size: 10px; letter-spacing: .14em; text-transform: uppercase; opacity: .7; }
 .card .n { font-weight: 800; }
 .card .d { color: var(--gold); font-family: Orbitron, sans-serif; }
+.card .row { display: flex; justify-content: space-between; align-items: center; }
+.card .num {
+  font-family: Orbitron, sans-serif; font-size: 12px; color: var(--cyan);
+  background: #0d1c22; border-radius: 999px; padding: 2px 8px;
+}
+.card.playable { cursor: pointer; outline: 1px solid #5ce1e688; }
+.card.playable:hover { transform: translateY(-2px); }
+.card.locked { opacity: .35; filter: grayscale(.4); pointer-events: none; }
+.queue-line {
+  display: flex; justify-content: space-between; gap: 8px; align-items: center;
+  font-size: 13px; margin: 10px 0 4px; min-height: 36px; text-align: left;
+}
+#turnClock { color: var(--gold); font-family: Orbitron, sans-serif; }
 
 .modal {
   position: fixed; inset: 0; background: #0008; display: grid; place-items: center; z-index: 20;

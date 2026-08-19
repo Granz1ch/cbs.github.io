@@ -1,5 +1,6 @@
 const API = window.CBS_API || (location.port === '3000' ? '' : 'http://127.0.0.1:3000');
 const PLAYER_KEY = 'cbs_player_id';
+const TURN_MS = 12000;
 
 const CARD_POOL = [
   { name: 'Искра', rarity: 'common', dmg: 8 },
@@ -30,10 +31,19 @@ const state = {
   cards: [],
   wave: 1,
   enemyHp: 30,
-  enemyMax: 30
+  enemyMax: 30,
+  enemyCards: [],
+  turn: 'idle',
+  queueNum: null,
+  queueDmg: 0,
+  inBattle: false
 };
 
 localStorage.setItem(PLAYER_KEY, state.id);
+
+let turnTimer = null;
+let turnEndsAt = 0;
+let tickId = null;
 
 const $ = (id) => document.getElementById(id);
 
@@ -53,6 +63,10 @@ function enemyForWave(w) {
   return { ...base, hp: Math.floor(base.hp * scale) };
 }
 
+function randomNum() {
+  return 1 + Math.floor(Math.random() * 5);
+}
+
 function pickCard() {
   const r = Math.random();
   let rarity = 'common';
@@ -61,10 +75,40 @@ function pickCard() {
   else if (r > 0.55) rarity = 'rare';
   const pool = CARD_POOL.filter((c) => c.rarity === rarity);
   const c = pool[Math.floor(Math.random() * pool.length)];
-  return { ...c, id: crypto.randomUUID() };
+  return { ...c, id: crypto.randomUUID(), num: randomNum() };
+}
+
+function ensureCardNums() {
+  state.cards.forEach((c) => {
+    if (!c.num) c.num = randomNum();
+  });
+}
+
+function makeEnemyDeck() {
+  const n = 3 + Math.min(8, state.wave);
+  state.enemyCards = Array.from({ length: n }, () => pickCard());
+}
+
+function clearTurnTimer() {
+  if (turnTimer) clearTimeout(turnTimer);
+  turnTimer = null;
+  turnEndsAt = 0;
+}
+
+function startQueueTimer() {
+  clearTurnTimer();
+  turnEndsAt = Date.now() + TURN_MS;
+  turnTimer = setTimeout(() => {
+    if (state.turn === 'player' && state.queueNum != null) endPlayerTurn('время вышло');
+  }, TURN_MS);
+}
+
+function log(msg) {
+  $('battleLog').textContent = msg;
 }
 
 function render() {
+  ensureCardNums();
   $('coins').textContent = state.coins;
   $('hpLabel').textContent = `${state.hp}/${state.maxHp}`;
   $('rollCost').textContent = `${rollPrice()} ◎`;
@@ -72,26 +116,44 @@ function render() {
   $('healCost').textContent = `${healCost()} ◎`;
   $('wave').textContent = state.wave;
   $('deckCount').textContent = state.cards.length;
+  $('enemyDeck').textContent = state.enemyCards.length;
   const e = enemyForWave(state.wave);
   $('enemyName').textContent = e.name;
   $('enemyFace').textContent = e.face;
   $('enemyHp').textContent = `${Math.max(0, state.enemyHp)} / ${state.enemyMax}`;
   $('enemyBar').style.width = `${Math.max(0, (state.enemyHp / state.enemyMax) * 100)}%`;
 
+  const qn = state.queueNum;
+  $('queueInfo').textContent = state.inBattle
+    ? state.turn === 'player'
+      ? qn == null
+        ? 'Твой ход: кинь карту — номер очереди зафиксируется'
+        : `Очередь №${qn} · урон ${state.queueDmg} · кидай карты с тем же номером`
+      : state.turn === 'enemy'
+        ? `Ход врага · очередь №${qn ?? '—'} · урон ${state.queueDmg}`
+        : 'Бой'
+    : 'Начни бой, затем кидай карты одного номера';
+
+  const left = turnEndsAt ? Math.max(0, Math.ceil((turnEndsAt - Date.now()) / 1000)) : 0;
+  $('turnClock').textContent = state.turn === 'player' && qn != null ? `${left}с` : '';
+
   $('cards').innerHTML = state.cards
-    .map(
-      (c) => `<article class="card ${c.rarity}">
-        <div class="r">${c.rarity}</div>
+    .map((c) => {
+      const locked = state.inBattle && state.turn === 'player' && qn != null && c.num !== qn;
+      const playable = state.inBattle && state.turn === 'player' && !locked;
+      return `<article class="card ${c.rarity} ${playable ? 'playable' : ''} ${locked ? 'locked' : ''}" data-id="${c.id}">
+        <div class="row"><span class="r">${c.rarity}</span><span class="num">№${c.num}</span></div>
         <div class="n">${c.name}</div>
         <div class="d">⚔ ${c.dmg}</div>
-      </article>`
-    )
+      </article>`;
+    })
     .join('');
 
   $('rollBtn').disabled = state.coins < rollPrice();
   $('hpUpBtn').disabled = state.coins < hpUpgradeCost();
   $('healBtn').disabled = state.coins < healCost() || state.hp >= state.maxHp;
-  $('fightBtn').disabled = state.cards.length === 0 || state.hp <= 0;
+  $('fightBtn').disabled = state.cards.length === 0 || state.hp <= 0 || state.inBattle;
+  $('endTurnBtn').disabled = !(state.inBattle && state.turn === 'player' && state.queueNum != null);
 }
 
 function floatText(x, y, text) {
@@ -123,11 +185,6 @@ async function api(path, body) {
 function applyServer(data) {
   if (!data) return;
   Object.assign(state, data);
-  if (!state.enemyMax) {
-    const e = enemyForWave(state.wave || 1);
-    state.enemyMax = e.hp;
-    state.enemyHp = e.hp;
-  }
 }
 
 async function save() {
@@ -137,9 +194,8 @@ async function save() {
 
 async function load() {
   const remote = await api(`/api/player/${state.id}`);
-  if (remote && remote.found) {
-    applyServer(remote.player);
-  } else {
+  if (remote && remote.found) applyServer(remote.player);
+  else {
     const local = localStorage.getItem('cbs_state');
     if (local) Object.assign(state, JSON.parse(local));
   }
@@ -148,7 +204,135 @@ async function load() {
     state.enemyHp = e.hp;
     state.enemyMax = e.hp;
   }
+  ensureCardNums();
+  if (!Array.isArray(state.enemyCards)) state.enemyCards = [];
   render();
+}
+
+function checkBattleEnd() {
+  if (state.enemyHp <= 0) {
+    const reward = 20 + state.wave * 8;
+    state.coins += reward;
+    state.wave += 1;
+    const e = enemyForWave(state.wave);
+    state.enemyHp = e.hp;
+    state.enemyMax = e.hp;
+    state.inBattle = false;
+    state.turn = 'idle';
+    state.queueNum = null;
+    state.queueDmg = 0;
+    state.enemyCards = [];
+    clearTurnTimer();
+    log(`Победа! +${reward} ◎  Волна ${state.wave}.`);
+    render();
+    save();
+    return true;
+  }
+  if (state.hp <= 0) {
+    state.inBattle = false;
+    state.turn = 'idle';
+    state.queueNum = null;
+    state.queueDmg = 0;
+    clearTurnTimer();
+    const e = enemyForWave(state.wave);
+    state.enemyHp = e.hp;
+    state.enemyMax = e.hp;
+    log('Ты пал. Подлечись и начни бой снова.');
+    render();
+    save();
+    return true;
+  }
+  return false;
+}
+
+function playPlayerCard(id) {
+  if (!state.inBattle || state.turn !== 'player') return;
+  const idx = state.cards.findIndex((c) => c.id === id);
+  if (idx < 0) return;
+  const card = state.cards[idx];
+  if (state.queueNum != null && card.num !== state.queueNum) {
+    log(`Сейчас очередь №${state.queueNum}. Карта №${card.num} не подходит.`);
+    return;
+  }
+  if (state.queueNum == null) {
+    state.queueNum = card.num;
+    state.queueDmg = 0;
+    startQueueTimer();
+  }
+  state.cards.splice(idx, 1);
+  state.queueDmg += card.dmg;
+  state.enemyHp -= card.dmg;
+  log(`Кинул ${card.name} (№${card.num}, ⚔${card.dmg}). Сумма очереди ${state.queueDmg}.`);
+  if (checkBattleEnd()) return;
+  const more = state.cards.some((c) => c.num === state.queueNum);
+  render();
+  save();
+  if (!more) endPlayerTurn('карт с этим номером больше нет');
+}
+
+function endPlayerTurn(reason) {
+  if (state.turn !== 'player') return;
+  clearTurnTimer();
+  log(`Очередь закрыта (${reason}). Нанесено ${state.queueDmg}. Ход врага.`);
+  state.turn = 'enemy';
+  state.queueNum = null;
+  state.queueDmg = 0;
+  render();
+  save();
+  setTimeout(enemyTurn, 700);
+}
+
+function enemyTurn() {
+  if (!state.inBattle || state.turn !== 'enemy') return;
+  if (!state.enemyCards.length) {
+    log('У врага нет карт. Твой ход.');
+    state.turn = 'player';
+    state.queueNum = null;
+    state.queueDmg = 0;
+    render();
+    return;
+  }
+  const counts = {};
+  state.enemyCards.forEach((c) => {
+    counts[c.num] = (counts[c.num] || 0) + 1;
+  });
+  const num = Number(
+    Object.entries(counts).sort((a, b) => b[1] - a[1] || Number(a[0]) - Number(b[0]))[0][0]
+  );
+  const played = state.enemyCards.filter((c) => c.num === num);
+  state.enemyCards = state.enemyCards.filter((c) => c.num !== num);
+  state.queueNum = num;
+  state.queueDmg = played.reduce((s, c) => s + c.dmg, 0);
+  state.hp = Math.max(0, state.hp - state.queueDmg);
+  log(`Враг закрыл очередь №${num}: ${played.length} карт, ⚔${state.queueDmg}.`);
+  render();
+  if (checkBattleEnd()) return;
+  setTimeout(() => {
+    state.turn = 'player';
+    state.queueNum = null;
+    state.queueDmg = 0;
+    log('Твой ход. Выбери карту — номер очереди зафиксируется.');
+    render();
+    save();
+  }, 1100);
+}
+
+function startBattle() {
+  if (state.cards.length === 0 || state.hp <= 0 || state.inBattle) return;
+  if (state.hp <= 0) return;
+  const e = enemyForWave(state.wave);
+  if (state.enemyHp <= 0) {
+    state.enemyHp = e.hp;
+    state.enemyMax = e.hp;
+  }
+  makeEnemyDeck();
+  state.inBattle = true;
+  state.turn = 'player';
+  state.queueNum = null;
+  state.queueDmg = 0;
+  log('Бой! Кидай карты одного номера, затем заверши очередь.');
+  render();
+  save();
 }
 
 $('clickBtn').addEventListener('click', (ev) => {
@@ -165,7 +349,7 @@ $('rollBtn').addEventListener('click', () => {
   state.rolls += 1;
   const card = pickCard();
   state.cards.push(card);
-  $('reveal').innerHTML = `<div class="r">${card.rarity}</div><div style="font-size:42px">🃏</div><b>${card.name}</b><div class="d">Урон ${card.dmg}</div>`;
+  $('reveal').innerHTML = `<div class="r">${card.rarity} · №${card.num}</div><div style="font-size:42px">🃏</div><b>${card.name}</b><div class="d">Урон ${card.dmg}</div>`;
   $('modal').classList.remove('hidden');
   render();
   save();
@@ -192,31 +376,17 @@ $('healBtn').addEventListener('click', () => {
   save();
 });
 
-$('fightBtn').addEventListener('click', () => {
-  if (!state.cards.length || state.hp <= 0) return;
-  const dmg = state.cards.reduce((s, c) => s + c.dmg, 0);
-  state.enemyHp -= dmg;
-  const incoming = 8 + state.wave * 4;
-  state.hp = Math.max(0, state.hp - incoming);
-  let log = `Ты нанёс ${dmg}. Враг ударил на ${incoming}.`;
-  if (state.enemyHp <= 0) {
-    const reward = 20 + state.wave * 8;
-    state.coins += reward;
-    state.wave += 1;
-    const e = enemyForWave(state.wave);
-    state.enemyHp = e.hp;
-    state.enemyMax = e.hp;
-    log = `Победа! +${reward} ◎  Следующая волна ${state.wave}.`;
-  }
-  if (state.hp <= 0) {
-    log = 'Ты пал. Подлечись и бей снова.';
-    const e = enemyForWave(state.wave);
-    state.enemyHp = e.hp;
-    state.enemyMax = e.hp;
-  }
-  $('battleLog').textContent = log;
-  render();
-  save();
+$('fightBtn').addEventListener('click', startBattle);
+$('endTurnBtn').addEventListener('click', () => endPlayerTurn('вручную'));
+
+$('cards').addEventListener('click', (ev) => {
+  const el = ev.target.closest('.card');
+  if (!el) return;
+  playPlayerCard(el.dataset.id);
 });
+
+tickId = setInterval(() => {
+  if (state.turn === 'player' && state.queueNum != null) render();
+}, 400);
 
 load();

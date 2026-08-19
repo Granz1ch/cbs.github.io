@@ -33,7 +33,12 @@ function sanitize(body) {
     cards: Array.isArray(body.cards) ? body.cards.slice(0, 80) : [],
     wave: Math.max(1, Number(body.wave) || 1),
     enemyHp: Math.max(0, Number(body.enemyHp) || 0),
-    enemyMax: Math.max(1, Number(body.enemyMax) || 30)
+    enemyMax: Math.max(1, Number(body.enemyMax) || 30),
+    enemyCards: Array.isArray(body.enemyCards) ? body.enemyCards.slice(0, 80) : [],
+    turn: ['idle', 'player', 'enemy'].includes(body.turn) ? body.turn : 'idle',
+    queueNum: body.queueNum == null ? null : Number(body.queueNum),
+    queueDmg: Math.max(0, Number(body.queueDmg) || 0),
+    inBattle: Boolean(body.inBattle)
   };
 }
 
